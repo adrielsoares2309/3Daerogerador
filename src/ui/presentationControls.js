@@ -12,9 +12,12 @@ export function createPresentationControls({
   etapas,
   onSelectStage,
   onOverview,
+  onFrameAll,
   onFreeExplore,
+  onToggleNavMode,
   onEscape,
-  onToggleFullscreen
+  onToggleFullscreen,
+  shouldIgnoreEscape = () => false
 }) {
   let currentStageNumber = null; // null = Visão Geral / Exploração Livre
   let isPresentationMode = false;
@@ -23,6 +26,9 @@ export function createPresentationControls({
   const btnNext = document.getElementById('nav-btn-next');
   const btnOverview = document.getElementById('nav-btn-overview');
   const btnHeaderOverview = document.getElementById('header-btn-overview');
+  const btnHeaderResetCamera = document.getElementById('btn-reset-camera');
+  const btnHeaderFrameAll = document.getElementById('btn-frame-all');
+  const btnNavMode = document.getElementById('btn-nav-mode');
   const btnFreeExplore = document.getElementById('nav-btn-free');
   const btnPresentationMode = document.getElementById('btn-presentation-mode');
 
@@ -84,6 +90,25 @@ export function createPresentationControls({
   if (btnHeaderOverview) {
     btnHeaderOverview.addEventListener('click', () => {
       onOverview();
+    });
+  }
+  if (btnHeaderResetCamera) {
+    btnHeaderResetCamera.addEventListener('click', () => {
+      onOverview();
+    });
+  }
+  if (btnHeaderFrameAll) {
+    btnHeaderFrameAll.addEventListener('click', () => {
+      if (onFrameAll) {
+        onFrameAll();
+      } else {
+        onOverview();
+      }
+    });
+  }
+  if (btnNavMode) {
+    btnNavMode.addEventListener('click', () => {
+      if (onToggleNavMode) onToggleNavMode();
     });
   }
 
@@ -169,6 +194,7 @@ export function createPresentationControls({
       event.preventDefault();
       onOverview();
     } else if (event.key === 'Escape') {
+      if (shouldIgnoreEscape()) return;
       event.preventDefault();
       if (isPresentationMode) {
         setPresentationMode(false);
@@ -178,6 +204,11 @@ export function createPresentationControls({
       if (!event.ctrlKey && !event.metaKey && !event.altKey) {
         event.preventDefault();
         onToggleFullscreen();
+      }
+    } else if (event.key === 'v' || event.key === 'V') {
+      if (!event.ctrlKey && !event.metaKey && !event.altKey && onToggleNavMode) {
+        event.preventDefault();
+        onToggleNavMode();
       }
     }
   }

@@ -16,7 +16,8 @@ export function setupSceneInteractions({
   domElement,
   equipmentGroups,
   etapas,
-  onSelectStage
+  onSelectStage,
+  isPointerLocked = () => false
 }) {
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -56,7 +57,7 @@ export function setupSceneInteractions({
   }
 
   function onPointerUp(event) {
-    if (isDragging || event.button !== 0) return;
+    if (isDragging || event.button !== 0 || isPointerLocked()) return;
 
     const rect = domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;

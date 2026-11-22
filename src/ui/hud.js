@@ -285,6 +285,12 @@ export function createHudAndSimulatorController({ onWindSpeedChange, onTogglePau
   return {
     updateSimulation,
     toggleFullscreen,
+    isAnyModalOpen() {
+      return Boolean(
+        simModal?.classList.contains('is-open') ||
+        helpModal?.classList.contains('is-open')
+      );
+    },
     closeAllModals() {
       if (simModal) simModal.classList.remove('is-open');
       if (helpModal) helpModal.classList.remove('is-open');

@@ -1,11 +1,26 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { createNavigationControls } from './navigationControls.js';
 
 export const OVERVIEW_CAMERA = {
   position: { x: 15, y: 115, z: 270 },
   target: { x: 10, y: 20, z: 0 }
 };
+
+/**
+ * Calcula a altura analítica do terreno na coordenada (x, z) para evitar que a câmera
+ * atravesse o solo ou o relevo distante.
+ */
+export function getTerrainHeightAt(x, z) {
+  if (z < -110) {
+    const dist = Math.abs(z + 110);
+    return (
+      Math.sin(x * 0.012) * Math.cos(z * 0.015) * Math.min(dist * 0.18, 28) +
+      Math.max(0, (dist - 20) * 0.12)
+    );
+  }
+  return 0.24;
+}
 
 /**
  * Inicializa a cena Three.js, câmera, WebGLRenderer, CSS2DRenderer, OrbitControls,
@@ -14,7 +29,7 @@ export const OVERVIEW_CAMERA = {
  * @param {HTMLElement} container - Container principal da cena 3D
  * @param {HTMLElement} labelContainer - Container sobreposto para rótulos CSS2D
  */
-export function setupScene(container, labelContainer) {
+export function setupScene(container, labelContainer, navigationCallbacks = {}) {
   const width = window.innerWidth;
   const height = window.innerHeight;
 
@@ -23,8 +38,8 @@ export function setupScene(container, labelContainer) {
   scene.background = new THREE.Color(0x070d19);
   scene.fog = new THREE.FogExp2(0x070d19, 0.0011);
 
-  // 2. Câmera
-  const camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2200);
+  // 2. Câmera (near reduzido para inspeção aproximada de detalhes sem recorte)
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.25, 2200);
   camera.position.set(
     OVERVIEW_CAMERA.position.x,
     OVERVIEW_CAMERA.position.y,
@@ -50,28 +65,14 @@ export function setupScene(container, labelContainer) {
   labelRenderer.domElement.className = 'css2d-overlay';
   labelContainer.appendChild(labelRenderer.domElement);
 
-  // 5. OrbitControls com restrições de segurança para não atravessar o terreno
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.minDistance = 8;
-  controls.maxDistance = 680;
-  controls.maxPolarAngle = Math.PI / 2 - 0.025; // Impede olhar por baixo do solo
-  controls.minPolarAngle = 0.05;
-  controls.target.set(
-    OVERVIEW_CAMERA.target.x,
-    OVERVIEW_CAMERA.target.y,
-    OVERVIEW_CAMERA.target.z
-  );
-
-  // Impede que o target ou a câmera desçam abaixo do nível do terreno (Y < 0.8)
-  controls.addEventListener('change', () => {
-    if (controls.target.y < 0.5) {
-      controls.target.y = 0.5;
-    }
-    if (camera.position.y < 1.5) {
-      camera.position.y = 1.5;
-    }
+  // 5. Sistema de navegação 3D (Modo Livre padrão + Modo Órbita alternativo)
+  const navigationControls = createNavigationControls({
+    camera,
+    domElement: renderer.domElement,
+    initialPosition: OVERVIEW_CAMERA.position,
+    initialTarget: OVERVIEW_CAMERA.target,
+    getTerrainHeightAt,
+    ...navigationCallbacks
   });
 
   // 6. Iluminação científica e ambiental
@@ -116,7 +117,7 @@ export function setupScene(container, labelContainer) {
   // 9. Limpeza de recursos
   function disposeScene() {
     window.removeEventListener('resize', onWindowResize);
-    controls.dispose();
+    navigationControls.dispose();
     renderer.dispose();
   }
 
@@ -125,7 +126,8 @@ export function setupScene(container, labelContainer) {
     camera,
     renderer,
     labelRenderer,
-    controls,
+    controls: navigationControls,
+    navigationControls,
     onWindowResize,
     disposeScene
   };

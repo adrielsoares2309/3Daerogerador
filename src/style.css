@@ -63,6 +63,11 @@ body {
   width: 100%;
   height: 100%;
   outline: none;
+  cursor: grab;
+}
+
+.canvas-container canvas.is-free-dragging {
+  cursor: grabbing;
 }
 
 .css2d-container,
@@ -283,6 +288,208 @@ body {
 .hud-btn.is-paused {
   border-color: var(--accent-yellow);
   color: var(--accent-yellow);
+}
+
+.hud-btn-nav-mode.is-free {
+  background: rgba(0, 245, 212, 0.14);
+  border-color: rgba(0, 245, 212, 0.55);
+  color: var(--accent-cyan);
+}
+
+.hud-btn-nav-mode.is-orbit {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #7dd3fc;
+}
+
+/* ==========================================================================
+   INDICADOR DISCRETO DE CONTROLES DE NAVEGAÇÃO 3D & POINTER LOCK
+   ========================================================================== */
+.nav-hud-indicator {
+  position: fixed;
+  left: 18px;
+  bottom: 68px;
+  z-index: 25;
+  background: rgba(11, 19, 35, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 9px 12px;
+  max-width: min(560px, calc(100vw - 36px));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.nav-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nav-hud-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-mode-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.nav-mode-badge.is-free {
+  background: rgba(0, 245, 212, 0.16);
+  border: 1px solid rgba(0, 245, 212, 0.45);
+  color: var(--accent-cyan);
+}
+
+.nav-mode-badge.is-orbit {
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #7dd3fc;
+}
+
+.nav-speed-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-secondary);
+}
+
+.nav-speed-badge.is-fast {
+  background: rgba(250, 204, 21, 0.18);
+  color: var(--accent-yellow);
+}
+
+.nav-speed-badge.is-slow {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+}
+
+.nav-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nav-mini-btn {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(30, 41, 59, 0.85);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-mini-btn:hover {
+  border-color: var(--accent-cyan);
+  color: #ffffff;
+  background: rgba(51, 65, 85, 0.95);
+}
+
+.nav-mini-icon {
+  width: 24px;
+  padding: 3px 0;
+  text-align: center;
+  font-weight: 800;
+}
+
+.nav-hud-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 11px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+}
+
+.nav-hud-keys span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.nav-hud-keys kbd {
+  padding: 1px 5px;
+  font-size: 0.68rem;
+  border-radius: 4px;
+}
+
+.nav-hud-indicator.is-collapsed .nav-hud-keys {
+  display: none;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.pointer-lock-reticle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 245, 212, 0.9);
+  background: rgba(7, 13, 25, 0.45);
+  box-shadow: 0 0 8px rgba(0, 245, 212, 0.6);
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.pointer-lock-banner {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translate(-50%, -8px);
+  z-index: 45;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(11, 19, 35, 0.92);
+  border: 1px solid rgba(0, 245, 212, 0.55);
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+body.pointer-lock-active .pointer-lock-reticle {
+  opacity: 1;
+}
+
+body.pointer-lock-active .pointer-lock-banner {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+body.presentation-mode-active .nav-hud-indicator {
+  opacity: 0.25;
+}
+
+body.presentation-mode-active .nav-hud-indicator:hover {
+  opacity: 1;
 }
 
 .hud-btn-icon {
@@ -1361,6 +1568,22 @@ body.presentation-mode-active .hud-subtitle {
   }
   .voltage-legend-panel {
     display: none;
+  }
+  .nav-hud-indicator {
+    left: 10px;
+    bottom: 64px;
+    padding: 7px 10px;
+    max-width: calc(100vw - 20px);
+  }
+  .nav-hud-keys {
+    gap: 5px 8px;
+    font-size: 0.68rem;
+  }
+  .pointer-lock-banner {
+    font-size: 0.7rem;
+    white-space: normal;
+    text-align: center;
+    max-width: calc(100vw - 24px);
   }
   .stage-detail-panel {
     width: calc(100vw - 20px);

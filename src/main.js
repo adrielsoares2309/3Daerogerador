@@ -22,17 +22,103 @@ async function initApplication() {
   const loadingStatusText = document.getElementById('loading-status-text');
   const loadingPercentText = document.getElementById('loading-percent-text');
 
+  // Elementos do indicador de navegação 3D
+  const btnNavMode = document.getElementById('btn-nav-mode');
+  const navHudIndicator = document.getElementById('nav-hud-indicator');
+  const navModeBadge = document.getElementById('nav-mode-badge');
+  const navSpeedBadge = document.getElementById('nav-speed-badge');
+  const navKeysFree = document.getElementById('nav-hud-keys-free');
+  const navKeysOrbit = document.getElementById('nav-hud-keys-orbit');
+  const btnPointerLock = document.getElementById('btn-pointer-lock');
+  const btnToggleNavHint = document.getElementById('btn-toggle-nav-hint');
+
   function updateLoadingUI(percent, message) {
     if (loadingBarFill) loadingBarFill.style.width = `${percent}%`;
     if (loadingPercentText) loadingPercentText.textContent = `${percent}%`;
     if (loadingStatusText) loadingStatusText.textContent = message;
   }
 
-  // 1. Inicializa Cena 3D, Câmera, Renderers e OrbitControls
-  const { scene, camera, renderer, labelRenderer, controls } = setupScene(
+  let hudController = null;
+  let cameraController = null;
+
+  function syncNavigationModeUI(mode) {
+    const isFree = mode === 'free';
+    if (btnNavMode) {
+      btnNavMode.classList.toggle('is-free', isFree);
+      btnNavMode.classList.toggle('is-orbit', !isFree);
+      btnNavMode.innerHTML = isFree
+        ? '<span>🧭</span> Navegação Livre'
+        : '<span>🔄</span> Modo Órbita';
+    }
+    if (navModeBadge) {
+      navModeBadge.textContent = isFree ? 'MODO LIVRE' : 'MODO ÓRBITA';
+      navModeBadge.classList.toggle('is-free', isFree);
+      navModeBadge.classList.toggle('is-orbit', !isFree);
+    }
+    if (navSpeedBadge) {
+      navSpeedBadge.classList.toggle('is-hidden', !isFree);
+    }
+    if (navKeysFree) navKeysFree.classList.toggle('is-hidden', !isFree);
+    if (navKeysOrbit) navKeysOrbit.classList.toggle('is-hidden', isFree);
+    if (btnPointerLock) btnPointerLock.classList.toggle('is-hidden', !isFree);
+  }
+
+  function syncSpeedModeUI(speedMode) {
+    if (!navSpeedBadge) return;
+    navSpeedBadge.classList.remove('is-fast', 'is-slow');
+    if (speedMode === 'fast') {
+      navSpeedBadge.textContent = 'Rápido 2,8×';
+      navSpeedBadge.classList.add('is-fast');
+    } else if (speedMode === 'slow') {
+      navSpeedBadge.textContent = 'Preciso 0,25×';
+      navSpeedBadge.classList.add('is-slow');
+    } else {
+      navSpeedBadge.textContent = 'Normal';
+    }
+  }
+
+  function syncPointerLockUI(isLocked) {
+    document.body.classList.toggle('pointer-lock-active', isLocked);
+  }
+
+  // 1. Inicializa Cena 3D, Câmera, Renderers e Controles de Navegação (Livre + Órbita)
+  const { scene, camera, renderer, labelRenderer, navigationControls, disposeScene } = setupScene(
     canvasContainer,
-    labelContainer
+    labelContainer,
+    {
+      isUiBlockingInput: () => Boolean(hudController?.isAnyModalOpen()),
+      onUserInteractionStart: () => {
+        cameraController?.cancelTransition();
+      },
+      onModeChange: syncNavigationModeUI,
+      onPointerLockChange: syncPointerLockUI,
+      onSpeedModeChange: syncSpeedModeUI
+    }
   );
+
+  syncNavigationModeUI(navigationControls.getMode());
+  syncSpeedModeUI(navigationControls.getSpeedMode());
+
+  if (btnPointerLock) {
+    btnPointerLock.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigationControls.lockPointer();
+    });
+  }
+
+  if (btnToggleNavHint && navHudIndicator) {
+    btnToggleNavHint.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const collapsed = navHudIndicator.classList.toggle('is-collapsed');
+      btnToggleNavHint.textContent = collapsed ? '+' : '−';
+    });
+  }
+
+  // Impede que eventos no indicador de controles interfiram na cena 3D
+  if (navHudIndicator) {
+    navHudIndicator.addEventListener('pointerdown', (e) => e.stopPropagation());
+    navHudIndicator.addEventListener('wheel', (e) => e.stopPropagation());
+  }
 
   // 2. Cria rede de cabos tridimensionais (CatmullRomCurve3) por faixa de tensão
   const { animatedCircuits } = createEnergyCables(scene);
@@ -45,6 +131,7 @@ async function initApplication() {
     const loaded = await loadAllModels(scene, updateLoadingUI);
     rotorNodes = loaded.rotorNodes;
     equipmentGroups = loaded.equipmentGroups;
+    navigationControls.setCollidableGroups(equipmentGroups);
   } catch (error) {
     console.error('Erro ao carregar modelos 3D:', error);
     if (loadingStatusText) {
@@ -56,8 +143,8 @@ async function initApplication() {
   // 4. Inicializa sistema de animação (pás do rotor com delta time + pulsos luminosos nos cabos)
   const animationSystem = createAnimationSystem(scene, rotorNodes, animatedCircuits);
 
-  // 5. Inicializa controlador de foco de câmera (GSAP)
-  const cameraController = createCameraFocusController(scene, camera, controls);
+  // 5. Inicializa controlador de foco de câmera (GSAP integrado aos modos Livre e Órbita)
+  cameraController = createCameraFocusController(scene, camera, navigationControls);
 
   // 6. Inicializa Hotspots 3D (CSS2DObject) e Painel Lateral Didático (KaTeX)
   let presentationControls = null;
@@ -103,17 +190,28 @@ async function initApplication() {
     }
   }
 
+  function frameFullPlant() {
+    stageModal.hide();
+    hotspots.setActiveHotspot(null);
+    animationSystem.setHighlightedStage(null);
+    cameraController.frameFullStructure(equipmentGroups);
+    if (presentationControls) {
+      presentationControls.updateActiveStageUI(null);
+    }
+  }
+
   function enterFreeExploration() {
     stageModal.hide();
     hotspots.setActiveHotspot(null);
     animationSystem.setHighlightedStage(null);
+    navigationControls.setMode('free');
     if (presentationControls) {
       presentationControls.updateActiveStageUI(null);
     }
   }
 
   // 8. Inicializa HUD, Simulador Matemático de Geração Eólica e Ajuda
-  const hudController = createHudAndSimulatorController({
+  hudController = createHudAndSimulatorController({
     onWindSpeedChange: (speedMps) => {
       animationSystem.setWindSpeed(speedMps);
     },
@@ -125,7 +223,11 @@ async function initApplication() {
     etapas: ETAPAS_FISICA,
     onSelectStage: (stageNum) => selectStage(stageNum),
     onOverview: () => returnToOverview(),
+    onFrameAll: () => frameFullPlant(),
     onFreeExplore: () => enterFreeExploration(),
+    onToggleNavMode: () => navigationControls.toggleMode(),
+    shouldIgnoreEscape: () =>
+      navigationControls.isPointerLocked() || navigationControls.wasJustUnlocked(),
     onEscape: () => {
       hudController.closeAllModals();
       if (stageModal.isOpen()) {
@@ -136,12 +238,13 @@ async function initApplication() {
   });
 
   // 10. Interação direta por clique nas malhas 3D (Raycaster)
-  setupSceneInteractions({
+  const interactions = setupSceneInteractions({
     camera,
     domElement: renderer.domElement,
     equipmentGroups,
     etapas: ETAPAS_FISICA,
-    onSelectStage: (stageNumber) => selectStage(stageNumber)
+    onSelectStage: (stageNumber) => selectStage(stageNumber),
+    isPointerLocked: () => navigationControls.isPointerLocked()
   });
 
   // Oculta tela de carregamento suavemente
@@ -150,6 +253,12 @@ async function initApplication() {
       loadingOverlay.classList.add('is-hidden');
     }, 350);
   }
+
+  // Limpeza ao descarregar a página
+  window.addEventListener('beforeunload', () => {
+    interactions.dispose();
+    disposeScene();
+  });
 
   // 11. Loop de renderização com requestAnimationFrame e THREE.Clock (delta time)
   const clock = new THREE.Clock();
@@ -160,7 +269,7 @@ async function initApplication() {
     const delta = clock.getDelta();
     const elapsedTime = clock.getElapsedTime();
 
-    controls.update();
+    navigationControls.update(delta);
     animationSystem.update(delta, elapsedTime);
     cameraController.updateHighlightPulse(elapsedTime);
 
