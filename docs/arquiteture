@@ -1,0 +1,82 @@
+energia-eolica-3d/
+├── index.html                  # Estrutura base (canvas 3D + containers dos pop-ups)
+├── package.json                # Dependências (three, vite, gsap para animar câmera)
+├── vite.config.js              # Configuração do servidor local e build
+│
+├── public/                     # Arquivos estáticos carregados diretamente
+│   ├── models/                 # Modelos 3D exportados do Blender (.glb)
+│   │   ├── turbina.glb         # Torre, nacele e pás (pás separadas para girar)
+│   │   ├── subestacao.glb      # Subestações elevadora e abaixadora
+│   │   ├── torre-alta.glb      # Torres de transmissão
+│   │   ├── poste-rua.glb       # Poste urbano com transformador
+│   │   └── casa.glb            # Residência com padrão de entrada
+│   └── textures/               # Imagens de superfície e iluminação
+│       ├── terreno.jpg         # Textura do solo/grama/asfalto
+│       └── ceu.hdr             # Mapa de ambiente para iluminação realista
+│
+└── src/                        # Código-fonte principal
+    ├── main.js                 # Inicia a cena, conecta os módulos e roda o loop de animação
+    ├── style.css               # Visual dos cards, ícones flutuantes e fórmulas
+    │
+    ├── data/
+    │   └── etapasFisica.js     # Conteúdo da apresentação (títulos, tensões, textos e fórmulas)
+    │
+    ├── scene/                  # Tudo relacionado ao mundo 3D
+    │   ├── setupScene.js       # Cena, câmera, luzes, terreno e controle do mouse (OrbitControls)
+    │   ├── loadModels.js       # Carrega e posiciona os .glb no mapa da cadeia
+    │   ├── cables.js           # Gera os cabos elétricos ligando turbina -> torres -> postes -> casa
+    │   └── animations.js       # Rotação contínua das pás e partículas/pulsos de energia nos fios
+    │
+    └── ui/                     # Tudo relacionado à interação do usuário
+        ├── hotspots.js         # Ícones clicáveis posicionados sobre cada elemento 3D
+        ├── modal.js            # Abre/fecha o painel lateral com a explicação física da etapa
+        └── cameraFocus.js      # Move a câmera suavemente para dar zoom no item clicado
+
+
+A aplicação consiste em uma Single Page Application (SPA) 100% client-side (sem necessidade de banco de dados ou servidor back-end). O navegador renderiza uma cena 3D interativa via WebGL em tela cheia, sobreposta por uma camada de interface HTML/CSS (HUD) que exibe ícones clicáveis (hotspots) e painéis didáticos com fórmulas matemáticas.O fluxo de funcionamento segue o ciclo:Carregamento: O motor 3D importa os modelos .glb otimizados e posiciona os elementos da cadeia (da turbina até a residência).Loop de Animação: A cena é atualizada a 60 FPS, rotacionando as pás da turbina e animando pulsos visuais nos cabos de energia.Interação: Ao clicar em um ícone, a câmera se desloca suavemente até o componente selecionado e o painel lateral exibe os dados físicos correspondentes.2. Stack Tecnológica (Bibliotecas, Frameworks e Ferramentas)CamadaTecnologiaFunção no ProjetoBuild Tool / BundlerViteServidor de desenvolvimento ultrarrápido (Hot Module Replacement) e empacotamento otimizado para produção.Linguagem BaseJavaScript (ES6+)Controle de estado, manipulação do DOM, lógica de cliques e orquestração da cena 3D.Motor Gráfico 3DThree.jsRenderização WebGL, gerenciamento de câmeras, luzes, materiais PBR, carregamento de modelos e detecção de cliques.Animação de CâmeraGSAP (GreenSock)Interpolação suave (easing) da posição da câmera e do ponto de foco ao clicar nos ícones.Renderização MatemáticaKaTeXRenderiza equações físicas (ex: $P = \frac{1}{2}\rho A v^3$, Lei de Faraday, Efeito Joule) com qualidade tipográfica instantânea no HTML.Estilização (UI)Tailwind CSS (ou CSS3 puro)Criação ágil de painéis laterais translúcidos (glassmorphism), badges de tensão e layout responsivo.Modelagem 3DBlenderCriação, adaptação, texturização e exportação dos modelos 3D no formato .glb.Otimização 3DglTF-Transform / DracoCompressão da geometria dos modelos .glb para garantir carregamento rápido no navegador.(Nota: Caso opte por usar um framework de interface como React, substitua o Three.js puro por React Three Fiber (R3F) + @react-three/drei, que encapsulam câmera, luzes e rótulos HTML em componentes declarativos.)3. Dependências e Configuração de AmbientePré-requisitosNode.js (versão 18 LTS ou superior) e npm.Navegador moderno com suporte a WebGL 2.0 (Chrome, Edge, Firefox ou Safari).Instalação das BibliotecasCom o terminal aberto na pasta do projeto, inicialize o Vite e instale os pacotes principais:Bashnpm create vite@latest energia-eolica-3d -- --template vanilla
+cd energia-eolica-3d
+npm install three gsap katex
+npm install -D tailwindcss postcss autoprefixer
+Exemplo de package.jsonJSON{
+  "name": "energia-eolica-3d",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "katex": "^0.16.11",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
+4. Arquitetura dos Módulos 3D e Interação4.1. Cena, Câmera e Controles (src/scene/setupScene.js)Renderer: THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' }) com toneMapping = THREE.ACESFilmicToneMapping para cores mais realistas.Câmera: THREE.PerspectiveCamera(45, width / height, 0.1, 1000).Controles: OrbitControls (de three/examples/jsm/controls/OrbitControls.js) com enableDamping = true (inércia suave), maxPolarAngle = Math.PI / 2.1 (impede a câmera de atravessar o chão) e limites de zoom (minDistance e maxDistance).Iluminação: Combinação de DirectionalLight (simulando o sol com sombras ativadas) + HemisphereLight (luz ambiente suave entre céu e solo) + mapa de ambiente .hdr via RGBELoader.4.2. Cabos e Fluxo de Energia (src/scene/cables.js)Geometria dos fios: Criados proceduralmente via código usando THREE.CatmullRomCurve3 (cria a curvatura natural/catenária dos fios suspensos entre torres e postes) combinada com THREE.TubeGeometry.Visualização da energia: Pequenas esferas emissivas (ou um shader simples) percorrem a curva curve.getPointAt(t) no loop de animação, alterando a cor conforme o nível de tensão (ex: vermelho para 230 kV, laranja para 13,8 kV, azul para 127/220 V).4.3. Sistema de Ícones Clicáveis (src/ui/hotspots.js)Existem duas abordagens técnicas no Three.js; para apresentações didáticas, recomenda-se a projeção HTML (CSS2DRenderer):Como funciona: Usa-se o CSS2DRenderer (nativo nos addons do Three.js) para fixar elementos <button> HTML em coordenadas 3D (x, y, z).Vantagem: Os ícones ficam sempre nítidos, aceitam CSS (efeito pulso, hover, acessibilidade por teclado) e não ficam distorcidos quando a câmera gira.Alternativa: THREE.Raycaster caso você queira que clicar diretamente no objeto 3D (ex: clicar na própria torre) também abra a descrição.4.4. Transição de Câmera (src/ui/cameraFocus.js)Quando um ícone é clicado, o GSAP anima simultaneamente:camera.position $\rightarrow$ para a coordenada de enquadramento daquela etapa.controls.target $\rightarrow$ para o centro do objeto 3D clicado.Um botão "Visão Geral" na interface retorna a câmera à posição inicial para visualizar a cadeia completa.5. Especificações dos Assets 3D e OtimizaçãoPara que o site rode sem travamentos no notebook da apresentação (mesmo sem placa de vídeo dedicada), os modelos 3D devem seguir regras rígidas:Formato obrigatório: .glb (glTF binário), pois empacota malha, materiais e texturas em um único arquivo leve.Orçamento de polígonos: Máximo de 100.000 triângulos somando toda a cena (cada modelo individual entre 5k e 20k triângulos, estilo low-poly ou estilizado limpo).Hierarquia de nós no Blender: Na turbina (turbina.glb), o conjunto do cubo + pás deve estar separado em um grupo nomeado (ex: Rotor_Pas) com o ponto de origem (pivot) exatamente no eixo central. Isso permite girar apenas as pás no Three.js com rotor.rotation.z -= delta * velocidade.Compressão: Utilizar DRACOLoader no Three.js para descomprimir malhas exportadas com compressão Draco no Blender (reduz o tamanho dos arquivos em até 80%).Texturas: Resolução máxima de 1024x1024 (1K) em formato .webp ou .jpg.6. Modelagem de Dados (src/data/etapasFisica.js)Todo o conteúdo teórico da apresentação deve ser desacoplado do código 3D em um array de objetos estruturados. Exemplo do contrato de dados:JavaScriptexport const etapas = [
+  {
+    id: "turbina-gerador",
+    ordem: 1,
+    titulo: "Aerogerador e Conversão Eletromagnética",
+    tensao: "690 V (CA Trifásica)",
+    categoria: "Geração",
+    corTema: "#10b981",
+    posicaoHotspot: { x: -40, y: 18, z: 0 },
+    cameraPos: { x: -28, y: 20, z: 16 },
+    cameraTarget: { x: -40, y: 15, z: 0 },
+    resumo: "As pás capturam a energia cinética do vento (limitada a 59,3% pelo Limite de Betz), giram o eixo e induzem corrente elétrica no estator pela Lei de Faraday.",
+    formulas: [
+      { nome: "Potência do Vento", latex: "P = \\frac{1}{2} \\rho A v^3" },
+      { nome: "Lei de Faraday", latex: "\\varepsilon = -N \\frac{d\\Phi_B}{dt}" }
+    ],
+    topicos: [
+      "Aerodinâmica: força de sustentação (lift) gera torque.",
+      "Transmissão: caixa multiplicadora (gearbox) eleva a rotação ou sistema direct drive.",
+      "Eletrônica de potência: retificador, barramento CC e inversor sincronizam a saída em 60 Hz."
+    ]
+  }
+  // ... demais 6 etapas (Transformador da Base até a Casa)
+];
+(Os conceitos de Limite de Betz, Lei de Faraday, força de sustentação, gearbox/direct drive e eletrônica de potência em 60 Hz derivam diretamente da sua pesquisa base.)   7. Requisitos de Desempenho, Compatibilidade e DeployDesempenho e Segurança na ApresentaçãoControle de DPR (Device Pixel Ratio): Limitar renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) para evitar sobrecarga em telas 4K ou Retina.Responsividade: Listener no evento window.addEventListener('resize', ...) para atualizar camera.aspect e renderer.setSize caso a tela seja projetada em um datashow com proporção diferente (ex: 4:3 ou 16:9).Modo Offline (Plano B): Como o projeto é compilado pelo Vite (npm run build), você pode rodá-lo localmente via npm run preview no dia da apresentação sem depender da internet da escola/faculdade.Hospedagem (Deploy Gratuito)

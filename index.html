@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadeia de Geração e Distribuição de Energia Eólica — Plataforma 3D Interativa</title>
+</head>
+<body>
+  <!-- TELA DE CARREGAMENTO ASSÍNCRONO DOS ASSETS 3D -->
+  <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
+    <div class="loading-card">
+      <div class="loading-badge">SIMULADOR CIENTÍFICO 3D • FÍSICA &amp; ENGENHARIA</div>
+      <h1 class="loading-title">CADEIA DE GERAÇÃO E DISTRIBUIÇÃO DE ENERGIA EÓLICA</h1>
+      <p class="loading-subtitle">Inicializando modelos tridimensionais (.glb), curvas de cabos e motor físico...</p>
+      <div class="loading-bar-track">
+        <div id="loading-bar-fill" class="loading-bar-fill"></div>
+      </div>
+      <div class="loading-meta-row">
+        <span id="loading-status-text">Preparando ambiente WebGL...</span>
+        <strong id="loading-percent-text">0%</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS 3D WEBGL E OVERLAY CSS2D (HOTSPOTS) -->
+  <main id="app-viewport" class="app-viewport">
+    <div id="canvas-container" class="canvas-container"></div>
+    <div id="css2d-container" class="css2d-container"></div>
+  </main>
+
+  <!-- 7.1 CABEÇALHO DO HUD -->
+  <header class="hud-header">
+    <div class="brand-block">
+      <div class="brand-icon" aria-hidden="true">⚡</div>
+      <div class="brand-text">
+        <h1 class="hud-title">CADEIA DE GERAÇÃO E DISTRIBUIÇÃO DE ENERGIA EÓLICA</h1>
+        <p class="hud-subtitle">Da energia cinética do vento ao consumo residencial.</p>
+      </div>
+    </div>
+
+    <div class="header-status-center">
+      <span id="header-current-stage" class="current-stage-pill">
+        Visão Geral — Cadeia Completa (7 Etapas)
+      </span>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" id="btn-open-simulator" class="hud-btn hud-btn-accent" title="Abrir Simulação Matemática de Geração Eólica">
+        <span>⚙</span> Simulação Eólica
+      </button>
+      <button type="button" id="btn-presentation-mode" class="hud-btn hud-btn-presentation" title="Ativar Modo Apresentação Sequencial">
+        <span>📽</span> Modo Apresentação
+      </button>
+      <button type="button" id="btn-toggle-anim" class="hud-btn" title="Pausar ou retomar rotação e fluxo de energia">
+        ⏸ Pausar Fluxo
+      </button>
+      <button type="button" id="header-btn-overview" class="hud-btn" title="Retornar à Visão Geral (Atalho: Home)">
+        Visão Geral
+      </button>
+      <button type="button" id="btn-open-help" class="hud-btn hud-btn-icon" title="Ajuda e Atalhos de Teclado" aria-label="Ajuda">
+        ?
+      </button>
+      <button type="button" id="btn-fullscreen" class="hud-btn hud-btn-icon" title="Alternar Tela Cheia (Atalho: F)" aria-label="Tela Cheia">
+        ⛶
+      </button>
+    </div>
+  </header>
+
+  <!-- LEGENDA FLUTUANTE DE CÓDIGO DE CORES DE TENSÃO -->
+  <aside class="voltage-legend-panel" aria-label="Código de cores por nível de tensão">
+    <div class="legend-title">FLUXO ELÉTRICO POR TENSÃO</div>
+    <ul class="legend-list">
+      <li>
+        <span class="legend-dot" style="background: #00f5d4; box-shadow: 0 0 8px #00f5d4;"></span>
+        <span class="legend-stage">Saída do Gerador</span>
+        <strong class="legend-kv">690 V – 1.000 V</strong>
+      </li>
+      <li>
+        <span class="legend-dot" style="background: #facc15; box-shadow: 0 0 8px #facc15;"></span>
+        <span class="legend-stage">Rede Coletora</span>
+        <strong class="legend-kv">34,5 kV</strong>
+      </li>
+      <li>
+        <span class="legend-dot" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span>
+        <span class="legend-stage">Transmissão AT</span>
+        <strong class="legend-kv">138 / 230 / 500 kV</strong>
+      </li>
+      <li>
+        <span class="legend-dot" style="background: #f97316; box-shadow: 0 0 8px #f97316;"></span>
+        <span class="legend-stage">Distribuição Primária</span>
+        <strong class="legend-kv">13,8 kV</strong>
+      </li>
+      <li>
+        <span class="legend-dot" style="background: #3b82f6; box-shadow: 0 0 8px #3b82f6;"></span>
+        <span class="legend-stage">Rede Secundária / Casa</span>
+        <strong class="legend-kv">127 / 220 / 380 V</strong>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- 7.2 PAINEL LATERAL DIREITO (CONTEÚDO DIDÁTICO DAS 7 ETAPAS + KATEX) -->
+  <aside id="stage-detail-panel" class="stage-detail-panel" aria-label="Explicação Física da Etapa">
+    <div class="stage-panel-topbar">
+      <span class="panel-topbar-label">INSPEÇÃO CIENTÍFICA &amp; EQUAÇÕES FÍSICAS</span>
+      <button type="button" id="btn-close-stage-panel" class="panel-close-btn" title="Fechar Painel (Esc)" aria-label="Fechar Painel">
+        ✕
+      </button>
+    </div>
+    <div id="stage-panel-body" class="stage-panel-body"></div>
+  </aside>
+
+  <!-- 10. MODAL / SEÇÃO INTERATIVA: SIMULAÇÃO DE GERAÇÃO EÓLICA -->
+  <section id="simulator-modal" class="floating-modal simulator-modal" aria-label="Simulação de Geração Eólica">
+    <div class="modal-header">
+      <div>
+        <span class="modal-tag">MODELO MATEMÁTICO INTERATIVO EM TEMPO REAL</span>
+        <h2 class="modal-title">SIMULAÇÃO DE GERAÇÃO EÓLICA</h2>
+      </div>
+      <div class="modal-header-actions">
+        <button type="button" id="btn-reset-simulator" class="hud-btn hud-btn-sm">Restaurar Padrão</button>
+        <button type="button" id="btn-close-simulator" class="panel-close-btn" aria-label="Fechar Simulador">✕</button>
+      </div>
+    </div>
+
+    <div class="simulator-body">
+      <div id="sim-katex-formulas" class="sim-formulas-strip"></div>
+
+      <div class="simulator-grid">
+        <!-- Controles Deslizantes e Numéricos -->
+        <div class="sim-controls-col">
+          <div class="sim-control-group">
+            <div class="sim-label-row">
+              <label for="sim-input-raio">Raio do Rotor ($R$)</label>
+              <div class="sim-input-unit">
+                <input type="number" id="sim-num-raio" min="10" max="80" step="1" value="40" />
+                <span>m</span>
+              </div>
+            </div>
+            <input type="range" id="sim-input-raio" min="10" max="80" step="1" value="40" />
+            <small class="sim-hint">Padrão: 40 m (Diâmetro = 80 m)</small>
+          </div>
+
+          <div class="sim-control-group">
+            <div class="sim-label-row">
+              <label for="sim-input-vento">Velocidade do Vento ($v$)</label>
+              <div class="sim-input-unit">
+                <input type="number" id="sim-num-vento" min="0" max="25" step="0.5" value="10" />
+                <span>m/s</span>
+              </div>
+            </div>
+            <input type="range" id="sim-input-vento" min="0" max="25" step="0.5" value="10" />
+            <small class="sim-hint">Padrão: 10 m/s (36 km/h) • Altera a rotação 3D</small>
+          </div>
+
+          <div class="sim-control-group">
+            <div class="sim-label-row">
+              <label for="sim-input-densidade">Densidade do Ar ($\rho$)</label>
+              <div class="sim-input-unit">
+                <input type="number" id="sim-num-densidade" min="0.900" max="1.400" step="0.005" value="1.225" />
+                <span>kg/m³</span>
+              </div>
+            </div>
+            <input type="range" id="sim-input-densidade" min="0.900" max="1.400" step="0.005" value="1.225" />
+            <small class="sim-hint">Padrão ISA (15 °C ao nível do mar): 1,225 kg/m³</small>
+          </div>
+
+          <div class="sim-control-group">
+            <div class="sim-label-row">
+              <label for="sim-input-cp">Coeficiente de Potência ($C_p$)</label>
+              <div class="sim-input-unit">
+                <input type="number" id="sim-num-cp" min="0.10" max="0.59" step="0.01" value="0.45" />
+                <span>adim.</span>
+              </div>
+            </div>
+            <input type="range" id="sim-input-cp" min="0.10" max="0.59" step="0.01" value="0.45" />
+            <small class="sim-hint">Padrão: 0,45 • Limite teórico de Betz: 16/27 ≈ 0,593</small>
+          </div>
+        </div>
+
+        <!-- Resultados Calculados e Gráfico P(v) -->
+        <div class="sim-results-col">
+          <div class="sim-kpi-grid">
+            <div class="sim-kpi-card">
+              <span class="kpi-label">Área Varrida pelas Pás ($A$)</span>
+              <strong id="sim-res-area" class="kpi-value">5.026,5 m²</strong>
+              <small class="kpi-sub">Seção circular $\pi R^2$</small>
+            </div>
+            <div class="sim-kpi-card">
+              <span class="kpi-label">Potência Disponível no Vento ($P_{\text{vento}}$)</span>
+              <strong id="sim-res-pvento" class="kpi-value kpi-cyan">3,08 MW</strong>
+              <small class="kpi-sub">100% da energia cinética por segundo</small>
+            </div>
+            <div class="sim-kpi-card">
+              <span class="kpi-label">Potência Mecânica no Rotor ($P_{\text{rotor}}$)</span>
+              <strong id="sim-res-protor" class="kpi-value kpi-yellow">1,39 MW</strong>
+              <small class="kpi-sub">Extraída pelas pás ($P_{\text{vento}} \times C_p$)</small>
+            </div>
+            <div class="sim-kpi-card">
+              <span class="kpi-label">Potência Elétrica Estimada ($P_{\text{elétrica}}$)</span>
+              <strong id="sim-res-peletrica" class="kpi-value kpi-green">1,30 MW</strong>
+              <small class="kpi-sub">Saída pós-conversão ($\eta = 94\%$)</small>
+            </div>
+          </div>
+
+          <div class="sim-secondary-metrics">
+            <div><span>Vazão mássica de ar ($\dot{m}$):</span> <strong id="sim-res-vazao">61,6 t/s</strong></div>
+            <div><span>Cinemática ilustrativa:</span> <strong id="sim-res-rpm">15,0 RPM → 1.200 RPM</strong></div>
+            <div><span>Corrente trifásica (690 V vs. 34,5 kV):</span> <strong id="sim-res-corrente">1.111 A → 22,2 A</strong></div>
+            <div><span>Estado na Curva de Operação:</span> <strong id="sim-res-regiao">Região 2</strong></div>
+          </div>
+
+          <div class="sim-chart-box">
+            <div class="sim-chart-header">
+              <span>Curva Cúbica de Potência vs. Velocidade do Vento ($P \propto v^3$)</span>
+              <div class="sim-chart-legend">
+                <span class="c-leg c-vento"><i></i> $P_{\text{vento}}$</span>
+                <span class="c-leg c-rotor"><i></i> $P_{\text{rotor}}$</span>
+                <span class="c-leg c-eletrica"><i></i> $P_{\text{elétrica}}$</span>
+              </div>
+            </div>
+            <div id="sim-chart-container"></div>
+          </div>
+
+          <p class="sim-disclaimer">
+            <strong>Nota Metodológica:</strong> Trata-se de um <em>modelo matemático analítico simplificado</em> para fins didáticos. Não constitui uma simulação aerodinâmica CFD completa e assume escoamento uniforme, rendimento pós-rotor constante de 94% e ausência de perdas de esteira (wake effect).
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL DE AJUDA E ATALHOS DE TECLADO -->
+  <section id="help-modal" class="floating-modal help-modal" aria-label="Guia de Navegação e Atalhos">
+    <div class="modal-header">
+      <div>
+        <span class="modal-tag">GUIA DE APRESENTAÇÃO E INTERAÇÃO 3D</span>
+        <h2 class="modal-title">COMANDOS E ATALHOS DE NAVEGAÇÃO</h2>
+      </div>
+      <button type="button" id="btn-close-help" class="panel-close-btn" aria-label="Fechar Ajuda">✕</button>
+    </div>
+    <div class="help-body">
+      <div class="help-columns">
+        <div class="help-box">
+          <h3>Atalhos de Teclado (Projetor / Apresentador)</h3>
+          <ul class="shortcut-list">
+            <li><kbd>→</kbd> <span>Avançar para a <strong>Próxima Etapa</strong> (1 a 7)</span></li>
+            <li><kbd>←</kbd> <span>Retornar para a <strong>Etapa Anterior</strong></span></li>
+            <li><kbd>Home</kbd> <span>Restaurar enquadramento de <strong>Visão Geral</strong></span></li>
+            <li><kbd>Esc</kbd> <span>Fechar painel lateral ou sair do Modo Apresentação</span></li>
+            <li><kbd>F</kbd> <span>Alternar modo de <strong>Tela Cheia</strong> (Fullscreen)</span></li>
+          </ul>
+        </div>
+        <div class="help-box">
+          <h3>Controle Espacial 3D com Mouse</h3>
+          <ul class="shortcut-list">
+            <li><strong>Botão Esquerdo + Arrastar:</strong> <span>Rotacionar câmera em órbita</span></li>
+            <li><strong>Botão Direito + Arrastar:</strong> <span>Deslocar câmera lateralmente (Pan)</span></li>
+            <li><strong>Scroll (Roda do Mouse):</strong> <span>Aproximar ou afastar zoom</span></li>
+            <li><strong>Clique nos Hotspots ou Modelos 3D:</strong> <span>Focar câmera e abrir explicação física da etapa</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7.3 BARRA INFERIOR DE APRESENTAÇÃO -->
+  <nav class="hud-bottom-bar" aria-label="Navegação sequencial das sete etapas">
+    <div class="bottom-nav-left">
+      <button type="button" id="nav-btn-overview" class="nav-ctrl-btn is-active" title="Enquadrar toda a infraestrutura (Home)">
+        <span>🌐</span> Visão Geral
+      </button>
+      <button type="button" id="nav-btn-free" class="nav-ctrl-btn" title="Fechar painéis e explorar livremente a cena 3D (Esc)">
+        <span>🧭</span> Exploração Livre
+      </button>
+    </div>
+
+    <div class="bottom-nav-center">
+      <button type="button" id="nav-btn-prev" class="nav-step-arrow" title="Etapa Anterior (Seta Esquerda)">
+        ← Anterior
+      </button>
+      <div id="nav-progress-steps" class="nav-progress-steps" role="group" aria-label="Progresso das 7 etapas"></div>
+      <button type="button" id="nav-btn-next" class="nav-step-arrow nav-step-arrow-primary" title="Próxima Etapa (Seta Direita)">
+        Próxima Etapa →
+      </button>
+    </div>
+  </nav>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
